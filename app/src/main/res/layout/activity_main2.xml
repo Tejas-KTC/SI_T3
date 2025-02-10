@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/btnSelect1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select First Audio" />
+
+    <TextView
+        android:id="@+id/txtFile1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No file selected"
+        android:padding="8dp" />
+
+    <Button
+        android:id="@+id/btnSelect2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Second Audio" />
+
+    <TextView
+        android:id="@+id/txtFile2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No file selected"
+        android:padding="8dp" />
+
+    <Button
+        android:id="@+id/btnMerge"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Merge Audio" />
+
+    <EditText
+        android:id="@+id/edtFileName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter Filename"
+        android:layout_marginTop="8dp"
+        android:layout_marginHorizontal="8dp"/>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        android:layout_gravity="center"/>
+
+</LinearLayout>
