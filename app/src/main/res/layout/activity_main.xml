@@ -35,6 +35,15 @@
         android:text="Mp4 to Mp3"
         android:textColor="@color/white"/>
 
+    <Button
+        android:id="@+id/btnVideoTrim"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="8dp"
+        android:layout_marginTop="8dp"
+        android:text="Video Trim"
+        android:textColor="@color/white"/>
+
 
     <Button
         android:id="@+id/btnList"

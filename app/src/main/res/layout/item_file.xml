@@ -25,4 +25,11 @@
         android:layout_height="wrap_content"
         android:textSize="12sp"
         android:textColor="@android:color/holo_blue_dark"/>
+
+    <ImageView
+        android:id="@+id/btnDelete"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:visibility="gone"
+        android:src="@drawable/ic_launcher_background"/>
 </LinearLayout>

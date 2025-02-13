@@ -17,6 +17,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -46,6 +49,10 @@ public class MainActivity2 extends AppCompatActivity {
     private EditText edtFilename;
     String filename;
 
+
+    private ActivityResultLauncher<String> pickAudioLauncher1;
+    private ActivityResultLauncher<String> pickAudioLauncher2;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,7 +65,6 @@ public class MainActivity2 extends AppCompatActivity {
         btnMerge = findViewById(R.id.btnMerge);
         edtFilename = findViewById(R.id.edtFileName);
 
-        // Request storage permissions for Android 6.0+ (API 23+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -76,30 +82,43 @@ public class MainActivity2 extends AppCompatActivity {
                 Toast.makeText(this, "Please select both audio files!", Toast.LENGTH_SHORT).show();
             }
         });
+
+        pickAudioLauncher1 = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                new ActivityResultCallback<Uri>() {
+                    @Override
+                    public void onActivityResult(Uri uri) {
+                        if (uri != null) {
+                            audioUri1 = uri;
+                            txtFile1.setText("Selected: " + getFileName(MainActivity2.this, uri));
+                        } else {
+                            Toast.makeText(MainActivity2.this, "Invalid file selection!", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
+
+        pickAudioLauncher2 = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                new ActivityResultCallback<Uri>() {
+                    @Override
+                    public void onActivityResult(Uri uri) {
+                        if (uri != null) {
+                            audioUri2 = uri;
+                            txtFile2.setText("Selected: " + getFileName(MainActivity2.this, uri));
+                        } else {
+                            Toast.makeText(MainActivity2.this, "Invalid file selection!", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
     }
 
     private void selectAudio(int requestCode) {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("audio/*");
-        startActivityForResult(intent, requestCode);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-            Uri selectedAudioUri = data.getData();
-
-            if (requestCode == PICK_AUDIO_REQUEST_1) {
-                audioUri1 = selectedAudioUri;
-                txtFile1.setText("Selected: " + getFileName(this, selectedAudioUri));
-            } else if (requestCode == PICK_AUDIO_REQUEST_2) {
-                audioUri2 = selectedAudioUri;
-                txtFile2.setText("Selected: " + getFileName(this, selectedAudioUri));
-            }
-        } else {
-            Toast.makeText(this, "Invalid file selection!", Toast.LENGTH_SHORT).show();
+        if (requestCode == PICK_AUDIO_REQUEST_1) {
+            pickAudioLauncher1.launch("audio/mpeg");
+        } else if (requestCode == PICK_AUDIO_REQUEST_2) {
+            pickAudioLauncher2.launch("audio/mpeg");
         }
     }
 
@@ -114,7 +133,6 @@ public class MainActivity2 extends AppCompatActivity {
 
         String outputFile = getOutputFilePath();
 
-        // Delete existing merged audio before creating a new one
         File mergedFile = new File(outputFile);
         if (mergedFile.exists()) {
             mergedFile.delete();

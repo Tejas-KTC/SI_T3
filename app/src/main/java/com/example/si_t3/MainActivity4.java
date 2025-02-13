@@ -13,6 +13,10 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -38,6 +42,8 @@ public class MainActivity4 extends AppCompatActivity {
     private Button btnConvert;
     private ProgressBar progressBar;
 
+    private ActivityResultLauncher<String> pickVideoLauncher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,6 +64,27 @@ public class MainActivity4 extends AppCompatActivity {
                 Toast.makeText(this, "Please select an MP4 file first!", Toast.LENGTH_SHORT).show();
             }
         });
+
+        pickVideoLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                new ActivityResultCallback<Uri>() {
+                    @Override
+                    public void onActivityResult(Uri uri) {
+                        if (uri != null) {
+                            videoUri = uri;
+                            txtFile.setText("Selected: " + getFileName(MainActivity4.this, uri));
+                            String fileName = getFileName(MainActivity4.this, videoUri);
+
+                            inputFilePath = copyFileToAppDir(videoUri, fileName);
+                            if (inputFilePath == null) {
+                                Toast.makeText(MainActivity4.this, "File copy failed!", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Toast.makeText(MainActivity4.this, "Invalid file selection!", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
     }
 
     private void requestStoragePermissions() {
@@ -68,31 +95,12 @@ public class MainActivity4 extends AppCompatActivity {
     }
 
     private void selectVideo() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("video/*");
-        startActivityForResult(intent, PICK_VIDEO_REQUEST);
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-            videoUri = data.getData();
-            String fileName = getFileName(this, videoUri);
-            txtFile.setText("Selected: " + fileName);
-
-            inputFilePath = copyFileToAppDir(videoUri, fileName);
-            if (inputFilePath == null) {
-                Toast.makeText(this, "File copy failed!", Toast.LENGTH_SHORT).show();
-            }
-        }
+        pickVideoLauncher.launch("video/mp4");
     }
 
     private void convertMp4ToMp3() {
         String outputFilePath = getConvertedFilePath();
 
-        // Delete existing merged audio before creating a new one
         File mergedFile = new File(outputFilePath);
         if (mergedFile.exists()) {
             mergedFile.delete();

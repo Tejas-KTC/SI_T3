@@ -18,6 +18,10 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -46,6 +50,7 @@ public class MainActivity3 extends AppCompatActivity {
     private String inputFilePath = "";
     private ProgressDialog progressDialog;
     private CustomRangeBar rangeSlider;
+    private ActivityResultLauncher<String> pickAudioLauncher1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,46 +82,52 @@ public class MainActivity3 extends AppCompatActivity {
                 Toast.makeText(this, "Please select an audio file!", Toast.LENGTH_SHORT).show();
             }
         });
+
+        pickAudioLauncher1 = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                new ActivityResultCallback<Uri>() {
+                    @Override
+                    public void onActivityResult(Uri uri) {
+                        if (uri != null) {
+                            audioUri = uri;
+                            String fileName = getFileName(MainActivity3.this, uri);
+                            txtFile.setText("Selected: " + fileName);
+
+                            inputFilePath = copyFileToAppDir(audioUri, fileName); // SET FILE PATH HERE
+                            if (inputFilePath != null) {
+                                audioDuration = getAudioDuration(inputFilePath);
+                                rangeSlider.setTimeRange(0, ((int) audioDuration));
+                                txtEnd.setText("End: " + formatTime(audioDuration));
+                            } else {
+                                Toast.makeText(MainActivity3.this, "File copy failed!", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            Toast.makeText(MainActivity3.this, "Invalid file selection!", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+        );
+
     }
 
     private void requestStoragePermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-            }, 1);
-        } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             }, 1);
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+            }, 1);
         }
     }
+
 
     private void selectAudio() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.setType("audio/*");
-        startActivityForResult(intent, PICK_AUDIO_REQUEST);
+        pickAudioLauncher1.launch("audio/Wav");
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        if (resultCode == RESULT_OK && data != null && data.getData() != null) {
-            audioUri = data.getData();
-            String fileName = getFileName(this, audioUri);
-            txtFile.setText("Selected: " + fileName);
-
-            inputFilePath = copyFileToAppDir(audioUri, fileName);
-            if (inputFilePath != null) {
-                audioDuration = getAudioDuration(inputFilePath);
-                rangeSlider.setTimeRange(0, ((int) audioDuration));
-                txtEnd.setText("End: " + formatTime(audioDuration));
-            } else {
-                Toast.makeText(this, "File copy failed!", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
 
     private void trimAudioFile() {
         String outputFile = getTrimmedOutputFilePath();
@@ -191,14 +202,15 @@ public class MainActivity3 extends AppCompatActivity {
         try {
             player.setDataSource(filePath);
             player.prepare();
-            return player.getDuration() / 1000f;
+            float duration = player.getDuration() / 1000f;
+            player.release();
+            return duration;
         } catch (IOException e) {
             e.printStackTrace();
             return 0;
-        } finally {
-            player.release();
         }
     }
+
 
     private String formatTime(float seconds) {
         return String.format("%02d:%02d", (int) (seconds / 60), (int) (seconds % 60));

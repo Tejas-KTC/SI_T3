@@ -1,14 +1,18 @@
 package com.example.si_t3;
 
+import java.util.Date;
+
 public class FileItem {
     private String fileName;
     private String folderName;
-    private long lastModified;
+    private Date lastModified;
+    private String filePath; // Add this field
 
-    public FileItem(String fileName, String folderName, long lastModified) {
+    public FileItem(String fileName, String folderName, long lastModified, String filePath) {
         this.fileName = fileName;
         this.folderName = folderName;
-        this.lastModified = lastModified;
+        this.lastModified = new Date(lastModified);
+        this.filePath = filePath; // Initialize it
     }
 
     public String getFileName() {
@@ -19,7 +23,11 @@ public class FileItem {
         return folderName;
     }
 
-    public long getLastModified() {
+    public Date getLastModified() {
         return lastModified;
+    }
+
+    public String getFilePath() { // Add this getter
+        return filePath;
     }
 }

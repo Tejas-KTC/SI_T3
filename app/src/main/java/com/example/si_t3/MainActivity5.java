@@ -85,7 +85,7 @@ public class MainActivity5 extends AppCompatActivity {
                 if (files != null) {
                     for (File file : files) {
                         if (file.isFile()) {
-                            fileList.add(new FileItem(file.getName(), folder, file.lastModified()));
+                            fileList.add(new FileItem(file.getName(), folder, file.lastModified(), file.getAbsolutePath()));
                         }
                     }
                 } else {
@@ -97,16 +97,22 @@ public class MainActivity5 extends AppCompatActivity {
         }
 
         // Sort files by last modified time (newest first)
-        Collections.sort(fileList, (f1, f2) -> Long.compare(f2.getLastModified(), f1.getLastModified()));
+        Collections.sort(fileList, (f1, f2) -> Long.compare(f2.getLastModified().getTime(), f1.getLastModified().getTime()));
 
-        // If adapter exists, update the data
         if (fileAdapter == null) {
-            fileAdapter = new FileAdapter(fileList);
+            fileAdapter = new FileAdapter(this, fileList, new FileAdapter.OnFileDeletedListener() {
+                @Override
+                public void onFileDeleted(FileItem fileItem) {
+                    loadFiles(); // Refresh the list after deletion
+                }
+            });
             recyclerView.setAdapter(fileAdapter);
         } else {
             fileAdapter.updateList(fileList);
         }
     }
+
+
 
 
 
@@ -138,7 +144,7 @@ public class MainActivity5 extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (checkPermission()) {
-            loadFiles();  // Refresh file list every time activity resumes
+            loadFiles();
         }
     }
 
