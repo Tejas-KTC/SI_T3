@@ -34,5 +34,6 @@ public class MainActivity extends AppCompatActivity {
         btnTrimAudio.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, MainActivity3.class)));
         btnMp4toMp3.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, MainActivity4.class)));
         btnList.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, MainActivity5.class)));
+        btnVideoTrim.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, MainActivity6.class)));
     }
 }
