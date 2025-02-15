@@ -26,10 +26,28 @@
         android:textSize="12sp"
         android:textColor="@android:color/holo_blue_dark"/>
 
-    <ImageView
-        android:id="@+id/btnDelete"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:visibility="gone"
-        android:src="@drawable/ic_launcher_background"/>
+    <LinearLayout
+        android:id="@+id/lnlDelCan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <Button
+            android:id="@+id/btnCancel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="5dp"
+            android:text="Cancel" />
+
+        <Button
+            android:id="@+id/btnDelete"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Delete"
+            android:layout_marginStart="5dp"
+            android:layout_weight="1"/>
+
+    </LinearLayout>
 </LinearLayout>

@@ -1,41 +1,41 @@
 package com.example.si_t3;
 
 import android.content.Context;
-import android.graphics.Color;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.si_t3.FileItem;
+import com.example.si_t3.R;
+
 import java.io.File;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
-    private Context context;
+
     private List<FileItem> fileList;
-    private OnFileDeletedListener listener;
+    private OnItemClickListener listener;
+    private boolean isSelectionMode = false;
 
-    private final List<FileItem> selectedItems = new ArrayList<>();
-
-
-    public interface OnFileDeletedListener {
-        void onFileDeleted(FileItem fileItem);
+    public interface OnItemClickListener {
+        void onItemClick(FileItem fileItem);
+        void onItemLongClick(FileItem fileItem, int position);
+        void onDeleteClick(FileItem fileItem, int position);
     }
 
-    public FileAdapter(Context context, List<FileItem> fileList, OnFileDeletedListener listener) {
-        this.context = context;
+    public FileAdapter(List<FileItem> fileList, OnItemClickListener listener) {
         this.fileList = fileList;
         this.listener = listener;
     }
-
 
     @NonNull
     @Override
@@ -46,39 +46,49 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        FileItem fileItem = fileList.get(position);
-        holder.fileName.setText(fileItem.getFileName());
-        holder.folderName.setText("Folder: " + fileItem.getFolderName());
+        FileItem item = fileList.get(position);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-        holder.fileDate.setText("Modified: " + sdf.format(fileItem.getLastModified()));
+        // Check if it's a folder (empty parentFolder means it's a folder)
+        boolean isFolder = item.getParentFolder().isEmpty();
 
-        // Change background color based on selection
-        if (selectedItems.contains(fileItem)) {
-            holder.itemView.setBackgroundColor(Color.LTGRAY); // Highlight selected item
-            holder.btnDelete.setVisibility(View.VISIBLE);
+        // If it's a folder, show only the name and hide other fields
+        if (isFolder) {
+            holder.fileName.setText(item.getName());
+            holder.fileParentFolder.setVisibility(View.GONE);
+            holder.fileCreationTime.setVisibility(View.GONE);
+            holder.lnlDelcan.setVisibility(View.GONE); // Hide delete/cancel options
         } else {
-            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
-            holder.btnDelete.setVisibility(View.GONE);
+            // It's a file, so display full details
+            holder.fileName.setText(item.getName());
+            holder.fileParentFolder.setText("Folder: " + item.getParentFolder());
+            holder.fileParentFolder.setVisibility(View.VISIBLE);
+
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+            holder.fileCreationTime.setText("Created: " + sdf.format(new Date(item.getCreationTimeMillis())));
+            holder.fileCreationTime.setVisibility(View.VISIBLE);
+
+            holder.lnlDelcan.setVisibility(item.isSelected() ? View.VISIBLE : View.GONE);
         }
 
-        // Long press to select/deselect item
-        holder.itemView.setOnLongClickListener(v -> {
-            toggleSelection(fileItem, holder);
-            return true;
-        });
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(item));
 
-        // Click delete button to remove the file
-        holder.btnDelete.setOnClickListener(v -> {
-            if (selectedItems.contains(fileItem)) {
-                deleteFile(fileItem);
-                selectedItems.remove(fileItem);
-                notifyDataSetChanged();
-                listener.onFileDeleted(fileItem);
-            }
-        });
+        if (!isFolder) {
+            holder.itemView.setOnLongClickListener(v -> {
+                listener.onItemLongClick(item, position);
+                return true;
+            });
+        } else {
+            holder.itemView.setOnLongClickListener(null);
+        }
 
+        holder.btnDelete.setOnClickListener(v -> listener.onDeleteClick(item, position));
+
+        holder.btnCancel.setOnClickListener(v -> {
+            item.setSelected(false);
+            notifyDataSetChanged();
+        });
     }
+
 
     @Override
     public int getItemCount() {
@@ -86,43 +96,25 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView fileName, folderName, fileDate;
-        ImageView btnDelete;
+        TextView fileName, fileCreationTime, fileParentFolder;
+        LinearLayout lnlDelcan;
+        Button btnDelete, btnCancel;
 
         ViewHolder(View itemView) {
             super(itemView);
             fileName = itemView.findViewById(R.id.fileName);
-            folderName = itemView.findViewById(R.id.folderName);
-            fileDate = itemView.findViewById(R.id.fileDate);
+            fileCreationTime = itemView.findViewById(R.id.fileDate);
+            fileParentFolder = itemView.findViewById(R.id.folderName);
+            lnlDelcan = itemView.findViewById(R.id.lnlDelCan);
             btnDelete = itemView.findViewById(R.id.btnDelete);
+            btnCancel = itemView.findViewById(R.id.btnCancel);
         }
     }
 
-    private void toggleSelection(FileItem fileItem, ViewHolder holder) {
-        if (selectedItems.contains(fileItem)) {
-            selectedItems.remove(fileItem);
-            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
-            holder.btnDelete.setVisibility(View.GONE);
-        } else {
-            selectedItems.add(fileItem);
-            holder.itemView.setBackgroundColor(Color.LTGRAY);
-            holder.btnDelete.setVisibility(View.VISIBLE);
+    public void selectAll(boolean select) {
+        for (FileItem item : fileList) {
+            item.setSelected(select);
         }
-    }
-
-    private void deleteFile(FileItem fileItem) {
-        File file = new File(fileItem.getFilePath());
-        if (file.exists() && file.delete()) {
-            Toast.makeText(context, "File deleted: " + fileItem.getFileName(), Toast.LENGTH_SHORT).show();
-            fileList.remove(fileItem);
-        } else {
-            Toast.makeText(context, "Failed to delete file", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    public void updateList(List<FileItem> newList) {
-        fileList.clear();
-        fileList.addAll(newList);
         notifyDataSetChanged();
     }
 }

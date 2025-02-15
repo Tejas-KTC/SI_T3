@@ -1,33 +1,36 @@
 package com.example.si_t3;
 
-import android.Manifest;
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
+
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.Settings;
 import android.view.View;
-import android.widget.Toast;
-import androidx.annotation.NonNull;
+import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.si_t3.FileAdapter;
+import com.example.si_t3.FileItem;
+
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class MainActivity5 extends AppCompatActivity {
 
     private RecyclerView recyclerView;
-    private FileAdapter fileAdapter;
-    private static final int PERMISSION_REQUEST_CODE = 100;
-    private static final int MANAGE_STORAGE_PERMISSION_CODE = 101;
+    private FileAdapter adapter;
+    private List<FileItem> fileList = new ArrayList<>();
+    private final List<String> allowedFolders = Arrays.asList("ConvertedAudio", "MergedAudio", "TrimmedAudio", "TrimmedVideo");
+    private boolean isFolderView = true;
+    private String currentFolderPath;
+    Button btnSelect;
+    private boolean isAllSelected = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,117 +38,97 @@ public class MainActivity5 extends AppCompatActivity {
         setContentView(R.layout.activity_main5);
 
         recyclerView = findViewById(R.id.recyclerView);
+        btnSelect = findViewById(R.id.btnSelectAll);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        if (checkPermission()) {
-            loadFiles();
-        } else {
-            requestPermission();
+        if(isFolderView){
+            btnSelect.setVisibility(GONE);
         }
-    }
-
-    private boolean checkPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return Environment.isExternalStorageManager();
-        } else {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED &&
-                    ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+        else {
+            btnSelect.setVisibility(VISIBLE);
         }
-    }
 
-    private void requestPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            try {
-                Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                intent.setData(Uri.parse("package:" + getPackageName()));
-                startActivityForResult(intent, MANAGE_STORAGE_PERMISSION_CODE);
-            } catch (Exception e) {
-                Intent intent = new Intent();
-                intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                startActivityForResult(intent, MANAGE_STORAGE_PERMISSION_CODE);
-            }
-        } else {
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-            }, PERMISSION_REQUEST_CODE);
-        }
-    }
-
-    private void loadFiles() {
-        String basePath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath();
-        String[] folders = {"ConvertedAudio", "MergedAudio", "TrimmedAudio"};
-
-        List<FileItem> fileList = new ArrayList<>();
-
-        for (String folder : folders) {
-            File dir = new File(basePath, folder);
-            if (dir.exists() && dir.isDirectory()) {
-                File[] files = dir.listFiles();
-                if (files != null) {
-                    for (File file : files) {
-                        if (file.isFile()) {
-                            fileList.add(new FileItem(file.getName(), folder, file.lastModified(), file.getAbsolutePath()));
-                        }
-                    }
+        adapter = new FileAdapter(fileList, new FileAdapter.OnItemClickListener() {
+            @Override
+            public void onItemClick(FileItem fileItem) {
+                if (fileItem.isFolder()) {
+                    loadFiles(fileItem.getPath());
                 } else {
-                    Toast.makeText(this, "Folder is empty: " + folder, Toast.LENGTH_SHORT).show();
+                    openFile(fileItem);
                 }
-            } else {
-                Toast.makeText(this, "Folder not found: " + folder, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onItemLongClick(FileItem fileItem, int position) {
+                fileItem.setSelected(!fileItem.isSelected());
+                adapter.notifyItemChanged(position);
+            }
+
+            @Override
+            public void onDeleteClick(FileItem fileItem, int position) {
+                File file = new File(fileItem.getPath());
+                if (file.delete()) {
+                    fileList.remove(position);
+                    adapter.notifyItemRemoved(position);
+                }
+            }
+        });
+
+        recyclerView.setAdapter(adapter);
+        loadFolders();
+
+        btnSelect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                isAllSelected = !isAllSelected;
+                adapter.selectAll(isAllSelected);
+
+                btnSelect.setText(isAllSelected ? "Deselect All" : "Select All");
+            }
+        });
+    }
+
+    private void loadFolders() {
+        fileList.clear();
+        String musicPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath();
+        for (String folder : allowedFolders) {
+            File folderFile = new File(musicPath, folder);
+            if (folderFile.exists() && folderFile.isDirectory()) {
+                fileList.add(new FileItem(folder, folderFile.getAbsolutePath(), true, "", 0));
             }
         }
+        isFolderView = true;
+        adapter.notifyDataSetChanged();
+    }
 
-        // Sort files by last modified time (newest first)
-        Collections.sort(fileList, (f1, f2) -> Long.compare(f2.getLastModified().getTime(), f1.getLastModified().getTime()));
+    private void loadFiles(String folderPath) {
+        fileList.clear();
+        File folder = new File(folderPath);
+        if (folder.exists() && folder.isDirectory()) {
+            for (File file : folder.listFiles()) {
+                fileList.add(new FileItem(file.getName(), file.getAbsolutePath(), false, folder.getName(), file.lastModified()));
+            }
+        }
+        Collections.sort(fileList, (f1, f2) -> Long.compare(f2.getCreationTimeMillis(), f1.getCreationTimeMillis()));
+        isFolderView = false;
+        btnSelect.setVisibility(VISIBLE);
+        currentFolderPath = folderPath;
+        adapter.notifyDataSetChanged();
+    }
 
-        if (fileAdapter == null) {
-            fileAdapter = new FileAdapter(this, fileList, new FileAdapter.OnFileDeletedListener() {
-                @Override
-                public void onFileDeleted(FileItem fileItem) {
-                    loadFiles(); // Refresh the list after deletion
-                }
-            });
-            recyclerView.setAdapter(fileAdapter);
+    @Override
+    public void onBackPressed() {
+        if (!isFolderView) {
+            btnSelect.setVisibility(GONE);
+            loadFolders();
         } else {
-            fileAdapter.updateList(fileList);
+            super.onBackPressed();
         }
     }
 
-
-
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                loadFiles();
-            } else {
-                Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
-            }
-        }
+    private void openFile(FileItem fileItem) {
+        Intent intent = new Intent(this, fileItem.getName().endsWith(".mp3") ? MainActivity6.class : MainActivity8.class);
+        intent.putExtra("filePath", fileItem.getPath());
+        startActivity(intent);
     }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == MANAGE_STORAGE_PERMISSION_CODE) {
-            if (checkPermission()) {
-                loadFiles();
-            } else {
-                Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (checkPermission()) {
-            loadFiles();
-        }
-    }
-
 }
