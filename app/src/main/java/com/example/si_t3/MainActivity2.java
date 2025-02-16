@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.text.InputFilter;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -64,6 +65,22 @@ public class MainActivity2 extends AppCompatActivity {
         progressBar = findViewById(R.id.progressBar);
         btnMerge = findViewById(R.id.btnMerge);
         edtFilename = findViewById(R.id.edtFileName);
+
+
+        // Allowed characters (A-Z, a-z, 0-9, _)
+        String allowedChars = "[a-zA-Z0-9_]*";
+
+        InputFilter inputFilter = (source, start, end, dest, dstart, dend) -> {
+            if (source.toString().matches(allowedChars)) {
+                return source; // Accept input
+            } else {
+                return ""; // Reject input
+            }
+        };
+
+        // Apply the filter
+        edtFilename.setFilters(new InputFilter[]{inputFilter});
+
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             ActivityCompat.requestPermissions(this, new String[]{

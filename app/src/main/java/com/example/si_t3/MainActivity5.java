@@ -4,10 +4,15 @@ import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Environment;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -16,6 +21,7 @@ import com.example.si_t3.FileAdapter;
 import com.example.si_t3.FileItem;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,6 +37,9 @@ public class MainActivity5 extends AppCompatActivity {
     private String currentFolderPath;
     Button btnSelect;
     private boolean isAllSelected = false;
+    private MediaPlayer mediaPlayer;
+    private boolean isPlaying = false;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -127,8 +136,57 @@ public class MainActivity5 extends AppCompatActivity {
     }
 
     private void openFile(FileItem fileItem) {
-        Intent intent = new Intent(this, fileItem.getName().endsWith(".mp3") ? MainActivity6.class : MainActivity8.class);
-        intent.putExtra("filePath", fileItem.getPath());
-        startActivity(intent);
+        if (fileItem.getName().endsWith(".mp4")) {
+            Intent intent = new Intent(this, MainActivity6.class);
+            intent.putExtra("filePath", fileItem.getPath());
+            intent.putExtra("fileName", fileItem.getName());
+            startActivity(intent);
+        } else if (fileItem.getName().endsWith(".mp3")) {
+            LinearLayout lnlMp3 = findViewById(R.id.linearLayout);
+            TextView txtFile = findViewById(R.id.txtFile);
+            ImageView imgPlayPause = findViewById(R.id.btnPlayPause);
+            TextView btnClose = findViewById(R.id.btnClose);
+
+            String filePath = fileItem.getPath();
+            txtFile.setText(fileItem.getName());
+
+            lnlMp3.setVisibility(View.VISIBLE);
+
+            if (mediaPlayer != null) {
+                mediaPlayer.release();
+            }
+
+            mediaPlayer = new MediaPlayer();
+            try {
+                mediaPlayer.setDataSource(filePath);
+                mediaPlayer.prepare();
+                mediaPlayer.start();
+                isPlaying = true;
+                imgPlayPause.setImageResource(R.drawable.pause);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            imgPlayPause.setOnClickListener(v -> {
+                if (isPlaying) {
+                    mediaPlayer.pause();
+                    imgPlayPause.setImageResource(R.drawable.play);
+                } else {
+                    mediaPlayer.start();
+                    imgPlayPause.setImageResource(R.drawable.pause);
+                }
+                isPlaying = !isPlaying;
+            });
+
+            btnClose.setOnClickListener(v -> {
+                if (mediaPlayer != null) {
+                    mediaPlayer.stop();
+                    mediaPlayer.release();
+                    mediaPlayer = null;
+                    isPlaying = false;
+                }
+                lnlMp3.setVisibility(View.GONE);
+            });
+        }
     }
 }
