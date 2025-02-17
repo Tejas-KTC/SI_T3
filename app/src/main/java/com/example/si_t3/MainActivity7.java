@@ -136,6 +136,7 @@ public class MainActivity7 extends AppCompatActivity {
         }
 
         File outputDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "TrimmedVideo");
+//        File outputDir = new File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "TrimmedVideo");
         if (!outputDir.exists()) {
             outputDir.mkdirs();
         }
