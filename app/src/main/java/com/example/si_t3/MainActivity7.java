@@ -2,13 +2,18 @@ package com.example.si_t3;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.media.MediaMetadataRetriever;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -24,11 +29,12 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import com.arthenica.ffmpegkit.FFmpegKit;
-import com.arthenica.ffmpegkit.ReturnCode;
+import com.daasuu.mp4compose.composer.Mp4Composer;
+import com.daasuu.mp4compose.filter.GlFilter;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
@@ -42,6 +48,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class MainActivity7 extends AppCompatActivity {
+
+    private static final int TRIM_START_TIME = 0;
+    private static final int TRIM_END_TIME = 0;
+
+    private String outputVideoPath;
+    private ProgressDialog progressDialog;
+
+
     private ExoPlayer player;
     private PlayerView playerView;
     private SeekBar trimSeekBar;
@@ -54,15 +68,24 @@ public class MainActivity7 extends AppCompatActivity {
     private String inputFilePath = "";
 
     private TextView tvStart, tvEnd;
-    private Button btnSelect, btnDone;
+    private Button btnSelect;
+    private ImageView btnDone, btnPlayPause;
     private ActivityResultLauncher<String> pickVideoLauncher;
-    private ImageView btnPlayPause;
     private Boolean isFirst = true;
+    private static final String TAG = "VideoTrim";
+    private View selectedRangeView;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main7);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility(0);
+            getWindow().setStatusBarColor(Color.parseColor("#8855F8"));
+        }
 
         playerView = findViewById(R.id.playerView);
         trimSeekBar = findViewById(R.id.trimSeekBar);
@@ -76,13 +99,16 @@ public class MainActivity7 extends AppCompatActivity {
         btnPlayPause = findViewById(R.id.btnPlayPause);
         btnDone = findViewById(R.id.btnDone);
 
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setMessage("Trimming Video...");
+        progressDialog.setCancelable(false);
+
         playerView.setVisibility(View.GONE);
         progressBar.setVisibility(View.GONE);
 
         setupRangeBar();
         requestStoragePermissions();
 
-        // Register video picker
         pickVideoLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(),
                 new ActivityResultCallback<Uri>() {
@@ -91,6 +117,8 @@ public class MainActivity7 extends AppCompatActivity {
                         if (uri != null) {
                             videoUri = uri;
                             String fileName = getFileName(MainActivity7.this, videoUri);
+
+
                             inputFilePath = copyFileToAppDir(videoUri, fileName);
 
                             if (inputFilePath != null) {
@@ -110,10 +138,10 @@ public class MainActivity7 extends AppCompatActivity {
             if (player != null) {
                 if (player.isPlaying()) {
                     player.pause();
-                    btnPlayPause.setImageResource(R.drawable.play); // Change to play icon
+                    btnPlayPause.setImageResource(R.drawable.play);
                 } else {
                     player.play();
-                    btnPlayPause.setImageResource(R.drawable.pause); // Change to pause icon
+                    btnPlayPause.setImageResource(R.drawable.pause);
                 }
             }
         });
@@ -122,47 +150,60 @@ public class MainActivity7 extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 if(inputFilePath != null){
-                    trimVideo();
+                    trimVideo(inputFilePath);
                 }
             }
         });
 
     }
 
-    private void trimVideo() {
-        if (videoUri == null || inputFilePath.isEmpty()) {
-            Toast.makeText(this, "No video selected!", Toast.LENGTH_SHORT).show();
-            return;
+
+    private void trimVideo(String inputPath) {
+        File musicDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "TrimmedVideo");
+
+        if (!musicDir.exists()) {
+            musicDir.mkdirs();
         }
 
-        File outputDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "TrimmedVideo");
-//        File outputDir = new File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "TrimmedVideo");
-        if (!outputDir.exists()) {
-            outputDir.mkdirs();
-        }
+        File outputFile = new File(musicDir, "trimmed_" + System.currentTimeMillis() + ".mp4");
+        outputVideoPath = outputFile.getAbsolutePath();
 
-        String outputFilePath = new File(outputDir, "trimmed_" + System.currentTimeMillis() + ".mp4").getAbsolutePath();
+        progressDialog.show();
 
-        String start = formatTime(startTime);
-        String duration = formatTime(endTime - startTime);
+        new Mp4Composer(inputPath, outputVideoPath)
+                .trim(startTime, endTime)
+                .size(720, 1280)
+                .filter(new GlFilter())
+                .listener(new Mp4Composer.Listener() {
+                    @Override
+                    public void onProgress(double progress) {
+                        Log.d(TAG, "Progress: " + (progress * 100) + "%");
+                    }
 
-        String cmd = "-i " + inputFilePath + " -ss " + start + " -t " + duration + " -c copy " + outputFilePath;
+                    @Override
+                    public void onCompleted() {
+                        runOnUiThread(() -> {
+                            progressDialog.dismiss();
+                            Toast.makeText(MainActivity7.this, "Trimmed Video Saved in Music/VideoTrimmed!", Toast.LENGTH_SHORT).show();
+                            finish();
+                        });
+                        Log.d(TAG, "Trimming completed: " + outputVideoPath);
+                    }
 
-        progressBar.setVisibility(View.VISIBLE);
+                    @Override
+                    public void onCanceled() {
+                        progressDialog.dismiss();
+                        Log.e(TAG, "Trimming canceled");
+                    }
 
-        FFmpegKit.executeAsync(cmd, session -> {
-            runOnUiThread(() -> {
-                progressBar.setVisibility(View.GONE);
-                if (ReturnCode.isSuccess(session.getReturnCode())) {
-                    Toast.makeText(this, "Video trimmed successfully!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Trim failed!", Toast.LENGTH_SHORT).show();
-                }
-            });
-
-
-        });
-
+                    @Override
+                    public void onFailed(Exception e) {
+                        progressDialog.dismiss();
+                        Log.e(TAG, "Trimming failed: " + e.getMessage());
+                        Toast.makeText(MainActivity7.this, "Failed to trim video!", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .start();
     }
 
 
@@ -171,13 +212,18 @@ public class MainActivity7 extends AppCompatActivity {
             player.release();
         }
 
-        player = new ExoPlayer.Builder(this).build();
-        playerView.setPlayer(player);
+        try {
+            player = new ExoPlayer.Builder(this).build();
+            playerView.setPlayer(player);
 
-        MediaItem mediaItem = MediaItem.fromUri(videoPath);
-        player.setMediaItem(mediaItem);
-        player.prepare();
-        player.setPlayWhenReady(false);
+            MediaItem mediaItem = MediaItem.fromUri(videoPath);
+            player.setMediaItem(mediaItem);
+            player.prepare();
+            player.setPlayWhenReady(false);
+        }
+        catch(Exception ex){
+            Log.e("sdcard-err2:",ex.getMessage());
+        }
 
         player.addListener(new Player.Listener() {
             @Override
@@ -211,10 +257,13 @@ public class MainActivity7 extends AppCompatActivity {
     }
 
     private String formatTime(long millis) {
-        int seconds = (int) (millis / 1000) % 60;
-        int minutes = (int) ((millis / 1000) / 60);
-        return String.format("%02d:%02d", minutes, seconds);
+        long totalSeconds = millis / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
+
 
     private void extractFrames(String videoPath) {
         progressBar.setVisibility(View.VISIBLE);
@@ -235,7 +284,7 @@ public class MainActivity7 extends AppCompatActivity {
                     long timeUs = i * interval * 1000;
                     Bitmap frame = retriever.getFrameAtTime(timeUs, MediaMetadataRetriever.OPTION_CLOSEST);
                     if (frame != null) {
-                        Bitmap scaledFrame = Bitmap.createScaledBitmap(frame, 100, 160, false);
+                        Bitmap scaledFrame = Bitmap.createScaledBitmap(frame, 80, 160, false);
                         runOnUiThread(() -> addFrameToView(scaledFrame));
                     }
                 }
@@ -245,6 +294,8 @@ public class MainActivity7 extends AppCompatActivity {
                     progressBar.setVisibility(View.GONE);
                     setupExoPlayer(videoPath);
                     if (player != null) {
+                        btnDone.setVisibility(View.VISIBLE);
+                        btnSelect.setVisibility(View.GONE);
                         player.setPlayWhenReady(true);
                     }
 
@@ -262,12 +313,16 @@ public class MainActivity7 extends AppCompatActivity {
         frameContainer.addView(imageView);
     }
 
+
     @SuppressLint("ClickableViewAccessibility")
     private void setupRangeBar() {
         trimSeekBar.post(() -> {
             int seekBarWidth = trimSeekBar.getWidth();
             int thumbWidth = startThumb.getWidth();
             float margin = getResources().getDisplayMetrics().density * 8;
+
+            // Initialize the selected range view
+            selectedRangeView = findViewById(R.id.selectedRangeView);
 
             startThumb.setOnTouchListener((v, event) -> {
                 if (event.getAction() == MotionEvent.ACTION_MOVE) {
@@ -278,6 +333,8 @@ public class MainActivity7 extends AppCompatActivity {
                     startTime = (long) (videoDuration * (newX / (seekBarWidth - thumbWidth)));
                     player.seekTo(startTime);
                     tvStart.setText(formatTime(startTime));
+
+                    updateRangeView();
                 }
                 return true;
             });
@@ -290,11 +347,29 @@ public class MainActivity7 extends AppCompatActivity {
 
                     endTime = (long) (videoDuration * (newX / (seekBarWidth - thumbWidth)));
                     tvEnd.setText(formatTime(endTime));
+
+                    updateRangeView();
                 }
                 return true;
             });
+
+            // Initial setup of range view
+            updateRangeView();
         });
     }
+
+    private void updateRangeView() {
+        // Set the position and width of the selected range view
+        float startX = startThumb.getX();
+        float endX = endThumb.getX();
+        float width = endX - startX;
+
+        // Update the range view to match the selected area
+        selectedRangeView.setX(startX);
+        selectedRangeView.getLayoutParams().width = (int) width;
+        selectedRangeView.requestLayout();
+    }
+
 
     private void requestStoragePermissions() {
         ActivityCompat.requestPermissions(this, new String[]{
@@ -330,4 +405,5 @@ public class MainActivity7 extends AppCompatActivity {
             return null;
         }
     }
+
 }

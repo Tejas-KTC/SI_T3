@@ -8,7 +8,39 @@
     android:background="@color/white"
     tools:context=".MainActivity7">
 
-  <!-- ExoPlayer View -->
+  <LinearLayout
+      android:id="@+id/linearLayout"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="#8855F8"
+      android:padding="7dp"
+      android:gravity="center_vertical"
+      app:layout_constraintEnd_toEndOf="parent"
+      app:layout_constraintHorizontal_bias="0.5"
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toTopOf="parent">
+
+
+    <TextView
+        android:id="@+id/actionBarTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:text="Trim Video Task"
+        android:layout_weight="1"
+        android:textColor="@color/white"
+        android:textSize="20sp" />
+
+
+    <ImageView
+        android:id="@+id/btnDone"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:src="@drawable/baseline_done_24"
+        android:visibility="gone"/>
+  </LinearLayout>
+
   <com.google.android.exoplayer2.ui.PlayerView
       android:id="@+id/playerView"
       android:layout_width="match_parent"
@@ -16,7 +48,7 @@
       app:layout_constraintBottom_toTopOf="@+id/startTime"
       app:layout_constraintEnd_toEndOf="parent"
       app:layout_constraintStart_toStartOf="parent"
-      app:layout_constraintTop_toTopOf="parent"
+      app:layout_constraintTop_toBottomOf="@+id/linearLayout"
       app:use_controller="false" />
 
   <TextView
@@ -43,7 +75,6 @@
       android:id="@+id/btnPlayPause"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:src="@drawable/pause"
       android:layout_marginBottom="10dp"
       app:layout_constraintBottom_toTopOf="@+id/frameLayout"
       app:layout_constraintEnd_toStartOf="@+id/endTime"
@@ -54,15 +85,12 @@
       android:id="@+id/btnSelect"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      app:layout_constraintStart_toStartOf="parent"
-      app:layout_constraintTop_toTopOf="parent" />
-
-  <Button
-      android:id="@+id/btnDone"
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
+      android:layout_marginTop="20dp"
+      android:text="Select a Video"
+      android:textColor="@color/white"
       app:layout_constraintEnd_toEndOf="parent"
-      app:layout_constraintTop_toTopOf="parent" />
+      app:layout_constraintStart_toStartOf="parent"
+      app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
   <ProgressBar
       android:id="@+id/progressBar"
@@ -108,7 +136,14 @@
         android:elevation="10dp"
         android:padding="10dp">
 
-      <!-- Seek Bar for Range Selection -->
+      <View
+          android:id="@+id/selectedRangeView"
+          android:layout_width="wrap_content"
+          android:layout_height="match_parent"
+          android:layout_marginTop="5dp"
+          android:background="#55FF4081"/>
+
+
       <SeekBar
           android:id="@+id/trimSeekBar"
           android:layout_width="match_parent"

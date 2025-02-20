@@ -40,6 +40,7 @@ dependencies {
     implementation ("com.arthenica:ffmpeg-kit-full:6.0-2")
     implementation ("com.github.bumptech.glide:glide:4.12.0")
     implementation ("com.google.android.exoplayer:exoplayer:2.19.0")
+    implementation ("com.github.MasayukiSuda:Mp4Composer-android:v0.4.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
