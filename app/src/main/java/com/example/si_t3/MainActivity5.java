@@ -140,6 +140,7 @@ public class MainActivity5 extends AppCompatActivity {
             Intent intent = new Intent(this, MainActivity6.class);
             intent.putExtra("filePath", fileItem.getPath());
             intent.putExtra("fileName", fileItem.getName());
+            intent.putExtra("folderName", fileItem.getParentFolder());
             startActivity(intent);
         } else if (fileItem.getName().endsWith(".mp3")) {
             LinearLayout lnlMp3 = findViewById(R.id.linearLayout);
